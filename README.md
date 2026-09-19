@@ -1,21 +1,7 @@
-# QuranSada (قرآن صدا)
-
-Flutter starter for an offline Quran recitation and human-voice translation app.
-
-## Current scaffold
-- Four selectable interface languages: Dari (`prs`), Persian (`fa`), Pashto (`ps`), English (`en`)
-- RTL/LTR layout switching
-- Basic home and surah screens
-- GitHub Actions workflow for release APK artifact
+# QuranSada — قرآن صدا
+Flutter Android project update: complete 114-surah catalog, four interface language options (Dari/Persian/Pashto/English), reciter selector, search, favorites, last-opened surah, local-asset audio player, app icon source, and GitHub Actions APK workflow.
 
 ## Important
-This is a foundation, not a finished Quran product. It does **not** yet contain the verified 114-surah/ayah dataset or licensed human recordings. Offline audio requires actual audio packs with redistribution rights. Do not represent placeholder screens as complete Quran content.
+This is not yet a complete release-ready Quran app. Verified Arabic ayah text, verified translations, licensed recitations, and human-voice translation recordings are not bundled. Playback reports a missing audio pack until the corresponding licensed MP3 is added. Reciter choices are currently selectors, not included recordings.
 
-## Build
-Open this repository in GitHub, push to `main`, then go to **Actions → QuranSada Android APK → Run workflow**. Download the APK from the workflow artifact.
-
-## Next implementation steps
-1. Add a verified Quran text source and translations with attribution.
-2. Integrate licensed reciter recordings and human-voice translations for Dari, Persian, Pashto, and English.
-3. Add download manager, storage checks, background audio service, bookmarks, repeat-ayah, and audio-pack integrity checks.
-4. Test pronunciation, verse alignment, accessibility, and offline behavior before release.
+See `assets/audio/README.txt` for file naming. Only add audio with redistribution permission.
