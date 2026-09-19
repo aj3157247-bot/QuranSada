@@ -10,6 +10,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   just_audio: ^0.9.40
+  quran: ^1.4.1
+  http: ^1.2.2
+  path_provider: ^2.1.4
   shared_preferences: ^2.3.2
   intl: ^0.20.3
 dev_dependencies:
