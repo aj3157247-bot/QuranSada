@@ -71,7 +71,7 @@ class _QuranHomeState extends State<QuranHome> {
   Future<void> _openSurah(Surah s) async {
     final p = await SharedPreferences.getInstance(); await p.setInt('lastSurah', s.number);
     if (!mounted) return;
-    Navigator.push(context, MaterialPageRoute(builder: (_) => SurahScreen(surah: s, lang: widget.lang, reciter: reciter, player: player, isFavorite: favorites.contains(s.number), onFavorite: () => _toggleFavorite(s.number), initialAyah: lastAyah))
+    Navigator.push(context, MaterialPageRoute(builder: (_) => SurahScreen(surah: s, lang: widget.lang, reciter: reciter, player: player, isFavorite: favorites.contains(s.number), onFavorite: () => _toggleFavorite(s.number), initialAyah: lastAyah)))
       .then((_) => _loadPrefs());
   }
   Future<void> _chooseReciter(String? v) async { if (v == null) return; setState(() => reciter = v); final p = await SharedPreferences.getInstance(); await p.setString('reciter', v); }
