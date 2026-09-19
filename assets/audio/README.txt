@@ -1,3 +1,4 @@
-Place properly licensed audio assets here, organized by reciter/language/surah/ayah.
-Do not add copyrighted recordings unless redistribution is permitted.
-The starter app does not include audio recordings or verified Quran translation datasets.
+QuranSada audio storage
+
+Surah recitation is downloaded by the app on first play and stored locally for offline playback. Downloads are not bundled in this repository.
+Human-voice translation audio is not included; do not generate or label synthetic recordings as human recitation. Add only verified, licensed recordings before enabling those tracks.
