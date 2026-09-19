@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
@@ -130,10 +131,45 @@ class SurahScreen extends StatefulWidget {
   @override State<SurahScreen> createState() => _SurahScreenState();
 }
 class _SurahScreenState extends State<SurahScreen> {
-  bool translation = false, busy = false; String? error; String translationLang = 'fa'; double fontSize = 25; int selectedAyah = 1; String ayahQuery = '';
+  bool translation = false, busy = false; String? error;
+  final FlutterTts _tts = FlutterTts();
+  final AudioPlayer _translationPlayer = AudioPlayer();
+  bool _speaking = false; String translationLang = 'fa'; double fontSize = 25; int selectedAyah = 1; String ayahQuery = '';
   bool get rtl => widget.lang != 'en';
   String tr(String prs, String en) => widget.lang == 'en' ? en : prs;
-  @override void initState() { super.initState(); selectedAyah = widget.initialAyah.clamp(1, widget.surah.ayahs).toInt(); _loadFont(); }
+  @override void initState() { super.initState(); _configureTts(); selectedAyah = widget.initialAyah.clamp(1, widget.surah.ayahs).toInt(); _loadFont(); }
+  Future<void> _configureTts() async {
+    await _tts.setSpeechRate(0.42);
+    await _tts.setPitch(1.0);
+    _tts.setStartHandler(() { if (mounted) setState(() => _speaking = true); });
+    _tts.setCompletionHandler(() { if (mounted) setState(() => _speaking = false); });
+    _tts.setCancelHandler(() { if (mounted) setState(() => _speaking = false); });
+  }
+  Future<void> _speakTranslation() async {
+    try {
+      await _translationPlayer.stop();
+      await _tts.stop();
+      await _tts.setLanguage(translationLang == 'en' ? 'en-US' : 'fa-IR');
+      await _tts.speak(_translation(selectedAyah));
+    } catch (_) {
+      if (mounted) setState(() => error = tr('صدای زبان انتخاب‌شده در گوشی موجود نیست.','The selected language voice is unavailable on this device.'));
+    }
+  }
+  Future<void> _playHumanTranslation() async {
+    // Optional verified human recordings: copy files to this app folder using
+    // naming SSSAAA.mp3, e.g. 001001.mp3 = surah 1, ayah 1.
+    final root = await getApplicationDocumentsDirectory();
+    final lang = translationLang == 'en' ? 'en' : 'fa';
+    final name = '${widget.surah.number.toString().padLeft(3, '0')}${selectedAyah.toString().padLeft(3, '0')}.mp3';
+    final file = File('${root.path}/quransada_translation_audio/$lang/$name');
+    if (!await file.exists()) {
+      if (mounted) setState(() => error = tr('فایل صوتی انسانی این آیه هنوز نصب/دانلود نشده است.','Human recording for this ayah is not installed/downloaded yet.'));
+      return;
+    }
+    await _tts.stop();
+    await _translationPlayer.setFilePath(file.path);
+    await _translationPlayer.play();
+  }
   Future<void> _loadFont() async { final p = await SharedPreferences.getInstance(); if (mounted) setState(() => fontSize = p.getDouble('quranFontSize') ?? 25); }
   String _audioSlug() => switch (widget.reciter) { 'Abdul Rahman Al-Sudais' => 'sudais', 'Maher Al-Muaiqly' => 'muaiqly', _ => 'alafasy' };
   Future<Directory> _audioDir() async { final d = Directory('${(await getApplicationDocumentsDirectory()).path}/quransada_audio/${_audioSlug()}'); if (!await d.exists()) await d.create(recursive: true); return d; }
@@ -184,12 +220,12 @@ class _SurahScreenState extends State<SurahScreen> {
           return Card(margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5), child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [CircleAvatar(radius: 15, child: Text('$ayah', style: const TextStyle(fontSize: 12))), const Spacer(), IconButton(tooltip: tr('نشان‌گذاری آیه','Bookmark ayah'), onPressed: () => _bookmarkAyah(ayah), icon: const Icon(Icons.bookmark_add_outlined)), IconButton(tooltip: tr('ذخیره آخرین آیه','Save reading position'), onPressed: () => _saveLastAyah(ayah), icon: const Icon(Icons.my_location))]),
             Text(_arabic(ayah), textAlign: TextAlign.center, textDirection: TextDirection.rtl, style: TextStyle(fontSize: fontSize, height: 1.9, fontFamily: 'serif')),
-            if (translation) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_translation(ayah), textAlign: translationLang == 'en' ? TextAlign.left : TextAlign.right, style: const TextStyle(fontSize: 17, height: 1.6))),
+            if (translation) Padding(padding: const EdgeInsets.only(top: 10), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(_translation(ayah), textAlign: translationLang == 'en' ? TextAlign.left : TextAlign.right, style: const TextStyle(fontSize: 17, height: 1.6)), Align(alignment: AlignmentDirectional.centerEnd, child: TextButton.icon(onPressed: () { _saveLastAyah(ayah); _speakTranslation(); }, icon: const Icon(Icons.record_voice_over), label: Text(tr('خواندن ترجمه','Speak translation'))))])),
             FutureBuilder<bool>(future: _isBookmarked(ayah), builder: (_, snap) => snap.data == true ? Align(alignment: AlignmentDirectional.centerEnd, child: Icon(Icons.bookmark, color: Theme.of(context).colorScheme.primary, size: 18)) : const SizedBox.shrink()),
           ])));
         })),
         SafeArea(top: false, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, boxShadow: const [BoxShadow(blurRadius: 5, color: Colors.black12)]), child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [IconButton(onPressed: busy ? null : playOrDownload, icon: Icon(busy ? Icons.downloading : Icons.download_for_offline_outlined)), Expanded(child: Text(tr('دانلود و پخش آفلاین تلاوت','Download & play offline recitation'))), IconButton(onPressed: () => widget.player.pause(), icon: const Icon(Icons.pause)), IconButton(onPressed: () => widget.player.stop(), icon: const Icon(Icons.stop))]),
+          Row(children: [IconButton(onPressed: _playHumanTranslation, tooltip: tr('صدای انسانی ترجمه','Human translation audio'), icon: const Icon(Icons.headphones)), IconButton(onPressed: _speaking ? () async { await _tts.stop(); } : _speakTranslation, tooltip: tr('صدای هوشمند ترجمه','Text-to-speech'), icon: Icon(_speaking ? Icons.stop_circle : Icons.record_voice_over)), IconButton(onPressed: busy ? null : playOrDownload, icon: Icon(busy ? Icons.downloading : Icons.download_for_offline_outlined)), Expanded(child: Text(tr('دانلود و پخش آفلاین تلاوت','Download & play offline recitation'))), IconButton(onPressed: () => widget.player.pause(), icon: const Icon(Icons.pause)), IconButton(onPressed: () => widget.player.stop(), icon: const Icon(Icons.stop))]),
           if (error != null) Text(error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
           StreamBuilder<Duration?>(stream: widget.player.durationStream, builder: (_, d) { final duration = d.data ?? Duration.zero; return StreamBuilder<Duration>(stream: widget.player.positionStream, builder: (_, p) { final pos = p.data ?? Duration.zero; final max = duration.inMilliseconds.toDouble(); return Slider(value: max <= 0 ? 0 : pos.inMilliseconds.clamp(0, max.toInt()).toDouble(), max: max <= 0 ? 1 : max, onChanged: max <= 0 ? null : (v) => widget.player.seek(Duration(milliseconds: v.round()))); }); }),
           Row(children: [Text(tr('اندازه متن','Text size')), Expanded(child: Slider(value: fontSize, min: 20, max: 42, divisions: 11, label: fontSize.round().toString(), onChanged: (v) => setState(() => fontSize = v), onChangeEnd: (v) async { final p = await SharedPreferences.getInstance(); await p.setDouble('quranFontSize', v); })), Text('${fontSize.round()}')]),
